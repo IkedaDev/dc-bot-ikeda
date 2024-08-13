@@ -41,5 +41,5 @@ jobs:
       env:
         NEW_VERSION: ${{ steps.version.outputs.version }}
       run: |
-        docker push ikedaharket/docker-graphql:$NEW_VERSION
-        docker push ikedaharket/docker-graphql:latest
+        docker push ikedaharket/dc-bot-ikeda:$NEW_VERSION
+        docker push ikedaharket/dc-bot-ikeda:latest
