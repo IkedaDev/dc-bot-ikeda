@@ -1,0 +1,83 @@
+name: Build
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-dephs: 0
+
+      - name: Git Semantic Version
+        uses: PaulHatch/semantic-version@v4.0.3
+        with:
+          major_pattern: "major:"
+          minor_pattern: "feat:"
+          format: "${major}.${minor}.${patch}-prerelease${increment}"
+        id: version
+
+      - name: Docker Login
+        env:
+          DOCKER_USER: ${{ secrets.DOCKER_USER }}
+          DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
+        run: |
+          docker login -u $DOCKER_USER -p $DOCKER_TOKEN
+
+      - name: Set up Docker Buildx
+        run: |
+          docker buildx create --use
+
+      - name: Build Docker Image
+        env:
+          NEW_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          docker buildx build --platform linux/amd64,linux/arm64/v8 -t ikedaharket/dc-bot-ikeda:$NEW_VERSION --push .
+          docker buildx build --platform linux/amd64,linux/arm64/v8 -t ikedaharket/dc-bot-ikeda:latest --push .
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Deploy Application
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'ENDSSH'
+
+          if [ $(docker ps -q -f name=dc-bot-ikeda) ]; then
+            docker stop dc-bot-ikeda || true
+            docker rm dc-bot-ikeda || true
+          fi
+
+          if [ $(docker images -q ikedaharket/dc-bot-ikeda:latest) ]; then
+            docker rmi ikedaharket/dc-bot-ikeda:latest || true
+          fi
+
+          docker run -d --restart=always \
+            --name dc-bot-ikeda \
+            -p 30200:80 \
+            -e DISCORD_TOKEN=${{ secrets.DISCORD_TOKEN }} \
+            -e BOT_PREFIX=-ike \
+            -e DISCORD_ID=${{ secrets.DISCORD_ID }} \
+            -e HUGGINGFACE_TOKEN=${{ secrets.HUGGINGFACE_TOKEN }} \
+            -e HUGGINGFACE_TEXT_MODEL=${{ secrets.HUGGINGFACE_TEXT_MODEL }} \
+            -e GPT_OPENAI_API_KEY=${{ secrets.GPT_OPENAI_API_KEY }} \
+            -e GPT_OPENAI_PROJECT=${{ secrets.GPT_OPENAI_PROJECT }} \
+            -e GPT_OPENAI_ORGANIZATION=${{ secrets.GPT_OPENAI_ORGANIZATION }} \
+            -e GPT_OPENAI_MODEL=${{ secrets.GPT_OPENAI_MODEL }} \
+            -e COMMAND_GPT=gpt \
+            ikedaharket/dc-bot-ikeda:latest
+          ENDSSH
