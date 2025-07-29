@@ -1,7 +1,21 @@
-import { CacheType, Client, Interaction, Message } from "discord.js";
+import {
+  CacheType,
+  Client,
+  Interaction,
+  Message,
+  GatewayIntentBits,
+  GuildMember,
+} from "discord.js";
 
 export abstract class Discord {
-  public readonly client: Client = new Client({ intents: [3276799] });
+  public readonly client: Client = new Client({
+    intents: [
+      3276799,
+      GatewayIntentBits.Guilds,
+      GatewayIntentBits.GuildMembers, // Necesario para detectar nuevos miembros
+      GatewayIntentBits.GuildMessages,
+    ],
+  });
   private token: string;
 
   constructor(token: string) {
@@ -14,6 +28,10 @@ export abstract class Discord {
 
   onReady(callback: (message: Client<boolean>) => void): Client<boolean> {
     return this.client.on("ready", callback);
+  }
+
+  onGuildMemberAdd(callback: (member: GuildMember) => void): Client<boolean> {
+    return this.client.on("guildMemberAdd", callback);
   }
 
   onMessageCreate(

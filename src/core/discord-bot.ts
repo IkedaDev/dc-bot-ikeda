@@ -1,6 +1,7 @@
 import { CacheType, Interaction, Message } from "discord.js";
 import { Discord } from "./adapters/discord/discord.adapter";
 import { DeleteMessage } from "../tools/use-cases/delete-message.use-case";
+import { addInitialRole } from "./add-init-role";
 
 interface Props {
   discordToken: string;
@@ -22,6 +23,7 @@ export class DiscordBot extends Discord {
   async start() {
     await this.login();
     this.onReady(() => console.log("Ikeda bot is working !!!"));
+    this.onGuildMemberAdd(addInitialRole);
     this.onMessageCreate((message) => this.handleMessage(message));
     this.onInteractionCreate((interaction) =>
       this.handleInteraction(interaction)
