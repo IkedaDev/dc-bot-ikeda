@@ -1,7 +1,7 @@
 import { CacheType, Interaction, Message } from "discord.js";
 import { Discord } from "./adapters/discord/discord.adapter";
 import { DeleteMessage } from "../tools/use-cases/delete-message.use-case";
-import { addInitialRole } from "./add-init-role";
+import { addInitialRole } from "./tools/add-init-role";
 
 interface Props {
   discordToken: string;
